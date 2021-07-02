@@ -73,58 +73,96 @@ void send(uint8_t *data, int len) {
   dump_packet();
 }
 
+char *key_name(uint8_t key) {
+  return (key < MAX_KEYCODE) ? qmk_keycodes[key] : "UNKNOWN";
+}
+
+char *mod_name(uint16_t keycode) {
+  static char name[6];
+  char *next = name;
+  if (keycode & 0x1000) {
+    *(next++) = 'R';
+  }
+  if (keycode & 0x100) {
+    *(next++) = 'C';
+  }
+  if (keycode & 0x200) {
+    *(next++) = 'S';
+  }
+  if (keycode & 0x400) {
+    *(next++) = 'A';
+  }
+  if (keycode & 0x800) {
+    *(next++) = 'G';
+  }
+  *(next++) = 0;
+  return name;
+}
+
 char *keycode_name(uint16_t keycode) {
-  return (keycode < MAX_KEYCODE) ? qmk_keycodes[keycode] : "OTHER";
+  static char name[128];
+  uint8_t key = keycode & 0xff;
+  if (keycode <= 0xff) {
+    return key_name(key);
+  } else if (keycode >= 0x100 && keycode <= 0x1fff) {
+    snprintf(name, sizeof(name), "%s(%s)", mod_name(keycode), key_name(key));
+  } else if (keycode >= 0x5100 && keycode <= 0x51ff) {
+    snprintf(name, sizeof(name), "MO(%hhu)", key);
+  } else {
+    snprintf(name, sizeof(name), "QMK(0x%04hx)", keycode);
+  }
+  return name;
 }
 
 void help() {
-  printf("Usage: via [command] [args...]\n");
-  printf("\nCommands:\n");
-  printf("  devices\n");
-  printf("  version -d [vendor:product]\n");
-  printf("  uptime -d [vendor:product]\n");
-  printf("Keymap:\n");
-  printf("  get_keycode -d [vendor:product] -l [layer] -r [row] -c [column]\n");
-  printf("  set_keycode -d [vendor:product] -l [layer] -r [row] -c [column] -k "
-         "[keycode]\n");
-  printf("RGB:\n");
-  printf("  get_rgb_brightness -d [vendor:product]\n");
-  printf("  get_rgb_mode -d [vendor:product]\n");
-  printf("  get_rgb_speed -d [vendor:product]\n");
-  printf("  get_rgb_colour -d [vendor:product]\n");
-  printf("  set_rgb_brightness -d [vendor:product] -b [brightness]\n");
-  printf("  set_rgb_mode -d [vendor:product] -m [mode]\n");
-  printf("  set_rgb_speed -d [vendor:product] -s [speed]\n");
-  printf("  set_rgb_colour -d [vendor:product] -h [hue] -S [saturation]\n");
-  printf("  dump_keymap -d [vendor:product] -L [layers] -R [rows] -C [cols]\n");
-  printf("\nFlags:\n");
-  printf("-d VENDOR:PRODUCT\n");
-  printf("   Select a device to command. Use 'devices' to enumerate available "
-         "devices.\n");
-  printf("-b [brightness] (0-255, default: 0)\n");
-  printf("   RGB brightness.\n");
-  printf("-m [mode] (0-255, default: 0)\n");
-  printf("   RGB effect mode.\n");
-  printf("-s [speed] (0-255, default: 0)\n");
-  printf("   RGB effect speed.\n");
-  printf("-h [hue] (0-255, default: 0)\n");
-  printf("   RGB colour hue.\n");
-  printf("-S [saturation] (0-255, default: 0)\n");
-  printf("   RGB colour saturation.\n");
-  printf("-l [layer] (0-255, default: 0)\n");
-  printf("   Key layer.\n");
-  printf("-r [row] (0-255, default: 0)\n");
-  printf("   Key row.\n");
-  printf("-c [column] (0-255, default: 0)\n");
-  printf("   Key column.\n");
-  printf("-k [keycode] (0-255, default: 0)\n");
-  printf("   Hexadecimal keycode.\n");
-  printf("-L [layer count] (0-255, default 0)\n");
-  printf("   Number of layers in keymap.\n");
-  printf("-R [row count] (0-255, default 0)\n");
-  printf("   Number of rows in keymap.\n");
-  printf("-C [column count] (0-255, default 0)\n");
-  printf("   Number of columns in keymap.\n");
+  printf("Usage: via [command] [args...]\n"
+         "\nCommands:\n"
+         "  devices\n"
+         "  keycodes\n"
+         "  version -d [vendor:product]\n"
+         "  uptime -d [vendor:product]\n"
+         "Keymap:\n"
+         "  get_keycode -d [vendor:product] -l [layer] -r [row] -c [column]\n"
+         "  set_keycode -d [vendor:product] -l [layer] -r [row] -c [column]\n"
+         "     -k [keycode]\n"
+         "RGB:\n"
+         "  get_rgb_brightness -d [vendor:product]\n"
+         "  get_rgb_mode -d [vendor:product]\n"
+         "  get_rgb_speed -d [vendor:product]\n"
+         "  get_rgb_colour -d [vendor:product]\n"
+         "  set_rgb_brightness -d [vendor:product] -b [brightness]\n"
+         "  set_rgb_mode -d [vendor:product] -m [mode]\n"
+         "  set_rgb_speed -d [vendor:product] -s [speed]\n"
+         "  set_rgb_colour -d [vendor:product] -h [hue] -S [saturation]\n"
+         "  dump_keymap -d [vendor:product] -L [layers] -R [rows] -C [cols]\n"
+         "\nFlags:\n"
+         "-d VENDOR:PRODUCT\n"
+         "   Select a device to command. Use 'devices' to enumerate\n"
+         "   available devices.\n"
+         "-b [brightness] (0-255, default: 0)\n"
+         "   RGB brightness.\n"
+         "-m [mode] (0-255, default: 0)\n"
+         "   RGB effect mode.\n"
+         "-s [speed] (0-255, default: 0)\n"
+         "   RGB effect speed.\n"
+         "-h [hue] (0-255, default: 0)\n"
+         "   RGB colour hue.\n"
+         "-S [saturation] (0-255, default: 0)\n"
+         "   RGB colour saturation.\n"
+         "-l [layer] (0-255, default: 0)\n"
+         "   Key layer.\n"
+         "-r [row] (0-255, default: 0)\n"
+         "   Key row.\n"
+         "-c [column] (0-255, default: 0)\n"
+         "   Key column.\n"
+         "-k [keycode] (0-255, default: 0)\n"
+         "   Hexadecimal keycode.\n"
+         "-L [layer count] (0-255, default 0)\n"
+         "   Number of layers in keymap.\n"
+         "-R [row count] (0-255, default 0)\n"
+         "   Number of rows in keymap.\n"
+         "-C [column count] (0-255, default 0)\n"
+         "   Number of columns in keymap.\n");
 }
 
 void devices() {
@@ -140,6 +178,18 @@ void devices() {
     device_info = device_info->next;
   }
   hid_free_enumeration(enumeration);
+}
+
+void keycodes() {
+  for (uint16_t i = 0; i < MAX_KEYCODE; i++) {
+    printf("[0x%04x] %s\n", i, key_name(i));
+  }
+  printf("[0x0100 -> 0x1f00] Mods\n"
+         "  [0x0100] Control\n"
+         "  [0x0200] Shift\n"
+         "  [0x0400] Alt\n"
+         "  [0x0800] GUI\n"
+         "  [0x1000] Right\n");
 }
 
 void version() {
@@ -210,7 +260,7 @@ void get_keycode() {
   printf("Layer: %hhu Row: %hhu Column: %hhu\n", packet[1], packet[2],
          packet[3]);
   unsigned short keycode = packet[4] << 8 | packet[5];
-  printf("Keycode: 0x%hx (%s)\n", keycode, keycode_name(keycode));
+  printf("Keycode: 0x%hx %s\n", keycode, keycode_name(keycode));
 }
 
 void set_keycode() {
@@ -218,7 +268,7 @@ void set_keycode() {
                    flag_column, flag_keycode >> 8, flag_keycode & 0xff},
        6);
   unsigned short keycode = packet[4] << 8 | packet[5];
-  printf("Keycode: 0x%hx (%s)\n", keycode, keycode_name(keycode));
+  printf("Keycode: 0x%hx %s\n", keycode, keycode_name(keycode));
 }
 
 void dump_keymap() {
@@ -242,7 +292,7 @@ void dump_keymap() {
       uint16_t column = index % flag_column_count;
       uint16_t row = (index / flag_column_count) % flag_row_count;
       uint16_t layer = index / (flag_column_count * flag_row_count);
-      printf("Layer: %02hu  Row: %02hu  Column: %02hu  Keycode: 0x%04hx (%s)\n",
+      printf("Layer: %02hu  Row: %02hu  Column: %02hu  Keycode: 0x%04hx %s\n",
              layer, row, column, keycode, keycode_name(keycode));
     }
     offset += fetch_size;
@@ -371,6 +421,8 @@ int main(int argc, char **argv) {
     help();
   } else if (strcmp(cmd, "devices") == 0) {
     devices();
+  } else if (strcmp(cmd, "keycodes") == 0) {
+    keycodes();
   } else if (strcmp(cmd, "version") == 0) {
     version();
   } else if (strcmp(cmd, "uptime") == 0) {
