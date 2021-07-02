@@ -261,3 +261,5 @@ char *qmk_keycodes[] = {"KC_NO", // 0x00
                         "KC_RSHIFT",
                         "KC_RALT",
                         "KC_RGUI"};
+
+#define MAX_KEYCODE (sizeof(qmk_keycodes)/sizeof(qmk_keycodes[0]))

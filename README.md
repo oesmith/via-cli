@@ -22,6 +22,7 @@ RGB:
   set_rgb_mode -d [vendor:product] -m [mode]
   set_rgb_speed -d [vendor:product] -s [speed]
   set_rgb_colour -d [vendor:product] -h [hue] -S [saturation]
+  dump_keymap -d [vendor:product] -L [layers] -R [rows] -C [cols]
 
 Flags:
 -d VENDOR:PRODUCT
@@ -44,4 +45,10 @@ Flags:
    Key column.
 -k [keycode] (0-255, default: 0)
    Hexadecimal keycode.
+-L [layer count] (0-255, default 0)
+   Number of layers in keymap.
+-R [row count] (0-255, default 0)
+   Number of rows in keymap.
+-C [column count] (0-255, default 0)
+   Number of columns in keymap.
 ```

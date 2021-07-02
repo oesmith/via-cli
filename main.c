@@ -27,6 +27,9 @@ uint8_t flag_mode = 0;
 uint8_t flag_speed = 0;
 uint8_t flag_hue = 0;
 uint8_t flag_saturation = 0;
+uint8_t flag_layer_count = 0;
+uint8_t flag_column_count = 0;
+uint8_t flag_row_count = 0;
 unsigned short flag_keycode = 0;
 
 void dump_packet() {
@@ -70,6 +73,10 @@ void send(uint8_t *data, int len) {
   dump_packet();
 }
 
+char *keycode_name(uint16_t keycode) {
+  return (keycode < MAX_KEYCODE) ? qmk_keycodes[keycode] : "OTHER";
+}
+
 void help() {
   printf("Usage: via [command] [args...]\n");
   printf("\nCommands:\n");
@@ -78,7 +85,8 @@ void help() {
   printf("  uptime -d [vendor:product]\n");
   printf("Keymap:\n");
   printf("  get_keycode -d [vendor:product] -l [layer] -r [row] -c [column]\n");
-  printf("  set_keycode -d [vendor:product] -l [layer] -r [row] -c [column] -k [keycode]\n");
+  printf("  set_keycode -d [vendor:product] -l [layer] -r [row] -c [column] -k "
+         "[keycode]\n");
   printf("RGB:\n");
   printf("  get_rgb_brightness -d [vendor:product]\n");
   printf("  get_rgb_mode -d [vendor:product]\n");
@@ -88,9 +96,11 @@ void help() {
   printf("  set_rgb_mode -d [vendor:product] -m [mode]\n");
   printf("  set_rgb_speed -d [vendor:product] -s [speed]\n");
   printf("  set_rgb_colour -d [vendor:product] -h [hue] -S [saturation]\n");
+  printf("  dump_keymap -d [vendor:product] -L [layers] -R [rows] -C [cols]\n");
   printf("\nFlags:\n");
   printf("-d VENDOR:PRODUCT\n");
-  printf("   Select a device to command. Use 'devices' to enumerate available devices.\n");
+  printf("   Select a device to command. Use 'devices' to enumerate available "
+         "devices.\n");
   printf("-b [brightness] (0-255, default: 0)\n");
   printf("   RGB brightness.\n");
   printf("-m [mode] (0-255, default: 0)\n");
@@ -109,6 +119,12 @@ void help() {
   printf("   Key column.\n");
   printf("-k [keycode] (0-255, default: 0)\n");
   printf("   Hexadecimal keycode.\n");
+  printf("-L [layer count] (0-255, default 0)\n");
+  printf("   Number of layers in keymap.\n");
+  printf("-R [row count] (0-255, default 0)\n");
+  printf("   Number of rows in keymap.\n");
+  printf("-C [column count] (0-255, default 0)\n");
+  printf("   Number of columns in keymap.\n");
 }
 
 void devices() {
@@ -194,9 +210,7 @@ void get_keycode() {
   printf("Layer: %hhu Row: %hhu Column: %hhu\n", packet[1], packet[2],
          packet[3]);
   unsigned short keycode = packet[4] << 8 | packet[5];
-  char *keyname =
-      (keycode < sizeof(qmk_keycodes)) ? qmk_keycodes[keycode] : "OTHER";
-  printf("Keycode: 0x%hx (%s)\n", keycode, keyname);
+  printf("Keycode: 0x%hx (%s)\n", keycode, keycode_name(keycode));
 }
 
 void set_keycode() {
@@ -204,9 +218,35 @@ void set_keycode() {
                    flag_column, flag_keycode >> 8, flag_keycode & 0xff},
        6);
   unsigned short keycode = packet[4] << 8 | packet[5];
-  char *keyname =
-      (keycode < sizeof(qmk_keycodes)) ? qmk_keycodes[keycode] : "OTHER";
-  printf("Keycode: 0x%hx (%s)\n", keycode, keyname);
+  printf("Keycode: 0x%hx (%s)\n", keycode, keycode_name(keycode));
+}
+
+void dump_keymap() {
+  uint16_t map_size = flag_layer_count * flag_column_count * flag_row_count * 2;
+  if (map_size == 0) {
+    fprintf(
+        stderr,
+        "dump_keymap requires layer (-L), column (-C), and row (-R) counts.\n");
+    exit(EXIT_FAILURE);
+  }
+  uint16_t offset = 0;
+  while (offset < map_size) {
+    uint16_t remaining = map_size - offset;
+    uint8_t fetch_size = (remaining > 28) ? 28 : remaining;
+    send((uint8_t[]){id_dynamic_keymap_get_buffer, offset >> 8, offset & 0xff,
+                     fetch_size},
+         4);
+    for (int i = 0; i < fetch_size; i += 2) {
+      uint16_t keycode = (packet[4 + i] << 8) | packet[5 + i];
+      uint16_t index = (offset + i) / 2;
+      uint16_t column = index % flag_column_count;
+      uint16_t row = (index / flag_column_count) % flag_row_count;
+      uint16_t layer = index / (flag_column_count * flag_row_count);
+      printf("Layer: %02hu  Row: %02hu  Column: %02hu  Keycode: 0x%04hx (%s)\n",
+             layer, row, column, keycode, keycode_name(keycode));
+    }
+    offset += fetch_size;
+  }
 }
 
 void open_device(char *id) {
@@ -273,7 +313,7 @@ int main(int argc, char **argv) {
   char *cmd = NULL;
 
   int opt;
-  while ((opt = getopt(argc, argv, "-d:m:s:b:h:S:r:c:l:k:")) != -1) {
+  while ((opt = getopt(argc, argv, "-d:m:s:b:h:S:r:c:l:k:L:R:C:")) != -1) {
     switch (opt) {
     case 1:
       if (cmd != NULL) {
@@ -312,6 +352,15 @@ int main(int argc, char **argv) {
     case 'k':
       x16(optarg, &flag_keycode, "keycode");
       break;
+    case 'L':
+      u8(optarg, &flag_layer_count, "layer count");
+      break;
+    case 'R':
+      u8(optarg, &flag_row_count, "row count");
+      break;
+    case 'C':
+      u8(optarg, &flag_column_count, "column count");
+      break;
     default:
       help();
       exit(EXIT_FAILURE);
@@ -346,6 +395,8 @@ int main(int argc, char **argv) {
     get_keycode();
   } else if (strcmp(cmd, "set_keycode") == 0) {
     set_keycode();
+  } else if (strcmp(cmd, "dump_keymap") == 0) {
+    dump_keymap();
   } else {
     help();
   }
