@@ -23,6 +23,7 @@ RGB:
   set_rgb_speed -d [vendor:product] -s [speed]
   set_rgb_colour -d [vendor:product] -h [hue] -S [saturation]
   dump_keymap -d [vendor:product] -L [layers] -R [rows] -C [cols]
+  reset_keymap -d [vendor:product]
 
 Flags:
 -d VENDOR:PRODUCT

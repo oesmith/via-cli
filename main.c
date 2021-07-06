@@ -135,6 +135,7 @@ void help() {
          "  set_rgb_speed -d [vendor:product] -s [speed]\n"
          "  set_rgb_colour -d [vendor:product] -h [hue] -S [saturation]\n"
          "  dump_keymap -d [vendor:product] -L [layers] -R [rows] -C [cols]\n"
+         "  reset_keymap -d [vendor:product]\n"
          "\nFlags:\n"
          "-d VENDOR:PRODUCT\n"
          "   Select a device to command. Use 'devices' to enumerate\n"
@@ -299,6 +300,10 @@ void dump_keymap() {
   }
 }
 
+void reset_keymap() {
+  send((uint8_t[]){id_dynamic_keymap_reset}, 1);
+}
+
 void open_device(char *id) {
   unsigned short vendor_id, product_id;
   if (2 != sscanf(id, "%hx:%hx", &vendor_id, &product_id)) {
@@ -449,6 +454,8 @@ int main(int argc, char **argv) {
     set_keycode();
   } else if (strcmp(cmd, "dump_keymap") == 0) {
     dump_keymap();
+  } else if (strcmp(cmd, "reset_keymap") == 0) {
+    reset_keymap();
   } else {
     help();
   }
